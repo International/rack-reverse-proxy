@@ -15,6 +15,10 @@ module Rack
       matcher = get_matcher rackreq.fullpath
       return @app.call(env) if matcher.nil?
 
+      if matcher.options[:only_if] && matcher.options[:only_if].kind_of?(Proc)
+        raise "Not allowed" unless matcher.options[:only_if].call(rackreq)
+      end
+
       uri = matcher.get_uri(rackreq.fullpath,env)
       all_opts = @global_options.dup.merge(matcher.options)
       headers = Rack::Utils::HeaderHash.new

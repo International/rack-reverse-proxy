@@ -1,5 +1,7 @@
 require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
 
+require "pry"
+
 describe Rack::ReverseProxy do
   include Rack::Test::Methods
   include WebMock::API
@@ -218,6 +220,25 @@ describe Rack::ReverseProxy do
           end
         end
       end
+    end
+  end
+
+  describe "it should respect condition of not doing request" do
+    def app
+      Rack::ReverseProxy.new(dummy_app) do
+        reverse_proxy '/test', 'http://example.com/', :only_if => lambda {|req| 1 == 2}
+        reverse_proxy '/2test', 'http://example.com/', :only_if => lambda {|req| 1 == 1}
+      end
+    end
+
+    it "should not do the request if lamdba doesn't pass" do
+      lambda { get '/test' }.should raise_error("Not allowed")
+    end
+
+    it "should do the request if lambda passes" do
+      stub_request(:get, 'http://example.com/2test').to_return({:body => "Proxied App Lambda Pass"})
+      get "/2test"
+      last_response.body.should == "Proxied App Lambda Pass"
     end
   end
 
